@@ -2,6 +2,7 @@ const express = require("express");
 const app = express();
 const morgan = require("morgan");
 app.use(morgan("tiny"));
+app.use(express.static("dist"));
 morgan.token("post", function (req, res) {
   return req.method === "POST" ? JSON.stringify(req.body) : " ";
 });

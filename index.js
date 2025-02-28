@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 const Person = require("./models/person");
 const PORT = process.env.PORT;
+
 // Frontend
 app.use(express.static("dist"));
 
@@ -62,7 +63,6 @@ app.post("/api/persons/", (request, response, next) => {
     console.log("undefined body content => ", body);
     return response.status(400).json({ error: "content missing" });
   }
-
   const person = new Person({
     name: body.name,
     number: body.number,
@@ -77,7 +77,14 @@ app.post("/api/persons/", (request, response, next) => {
         response.status(404).end();
       }
     })
-    .catch((error) => next(error));
+    .catch((error) => {
+      console.log("=================");
+      console.log("error => ", error.errors.name);
+      if (error.name === "ValidationError:") {
+        return response.status(400).json({ error: error.message });
+      }
+      next(error);
+    });
 });
 
 // DELETE person
@@ -111,6 +118,16 @@ app.put("/api/persons/:id", (request, response, next) => {
     })
     .catch((error) => next(error));
 });
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+  if (error.name === "CastError") {
+    return response.status(400).send({ error: "malformatted id" });
+  } else if (error.name === "ValidationError") {
+    return response.status(400).json({ error: error.message });
+  }
 
+  next(error);
+};
+app.use(errorHandler);
 app.listen(PORT);
 console.log("Running on PORT => ", PORT);

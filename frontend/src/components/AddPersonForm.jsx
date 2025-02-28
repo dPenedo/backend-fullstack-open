@@ -25,7 +25,7 @@ const AddPersonForm = ({
     setNewNumber(event.target.value);
   };
 
-  const addNote = (event) => {
+  const addPerson = (event) => {
     event.preventDefault();
 
     const isNameTaken = persons.some((person) => person.name === newName);
@@ -71,21 +71,30 @@ const AddPersonForm = ({
           });
       }
     } else {
-      personsService.createPerson(personObject).then((response) => {
-        setPersons(persons.concat(response.data));
-        setNotificationStyle("green");
-        setNotificationMessage(`${response.data.name} added`);
-        setTimeout(() => {
-          setNotificationMessage(null);
-        }, 5000);
-        setNewName("");
-        setNewNumber("");
-      });
+      personsService
+        .createPerson(personObject)
+        .then((response) => {
+          setPersons(persons.concat(response.data));
+          setNotificationStyle("green");
+          setNotificationMessage(`${response.data.name} added`);
+          setTimeout(() => {
+            setNotificationMessage(null);
+          }, 5000);
+          setNewName("");
+          setNewNumber("");
+        })
+        .catch((error) => {
+          setNotificationStyle("red");
+          setNotificationMessage(error.response.data.error);
+          setTimeout(() => {
+            setNotificationMessage(null);
+          }, 5000);
+        });
     }
   };
 
   return (
-    <form onSubmit={addNote}>
+    <form onSubmit={addPerson}>
       <div>
         name: <input value={newName} onChange={handleNameInputChange} />
       </div>

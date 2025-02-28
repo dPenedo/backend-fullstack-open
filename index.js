@@ -1,89 +1,116 @@
+require("dotenv").config();
 const express = require("express");
 const app = express();
+const Person = require("./models/person");
+const PORT = process.env.PORT;
+// Frontend
+app.use(express.static("dist"));
+
+// Data to JSON
+app.use(express.json());
+
+// + info on console
 const morgan = require("morgan");
 app.use(morgan("tiny"));
-app.use(express.static("dist"));
 morgan.token("post", function (req, res) {
   return req.method === "POST" ? JSON.stringify(req.body) : " ";
 });
-app.use(express.json());
 
-let persons = [
-  {
-    id: 1,
-    name: "Arto Hellas",
-    number: "040-123456",
-  },
-  {
-    id: 2,
-    name: "Ada Lovelace",
-    number: "39-44-5323523",
-  },
-  {
-    id: 3,
-    name: "Dan Abramov",
-    number: "12-43-234345",
-  },
-  {
-    id: 4,
-    name: "Mary Poppendieck",
-    number: "39-23-6423122",
-  },
-];
-
-app.get("/api/persons", (request, response) => {
-  response.json(persons);
-});
-
+// GET general info
 app.get("/info", (request, response) => {
-  let date_obj = new Date();
-  response.send(
-    `<p>Phonebook has info for ${persons.length} people</p><p>${date_obj}</p>`,
-  );
+  Person.countDocuments({})
+    .then((numberOfPersons) => {
+      let date_obj = new Date();
+      response.send(
+        `<p>Phonebook has info for ${numberOfPersons} people</p><p>${date_obj}</p>`,
+      );
+    })
+    .catch((error) => next(error));
 });
 
-app.get("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  const person = persons.find((person) => person.id === id);
-  if (person) {
-    response.json(person);
-  } else {
-    response.status(404).end();
-  }
+// GET all
+app.get("/api/persons", (request, response, next) => {
+  Person.find({})
+    .then((persons) => {
+      if (persons) {
+        response.json(persons);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
-// TODO: falta lamorgan
-app.post("/api/persons/", (request, response) => {
+// GET by id
+app.get("/api/persons/:id", (request, response, next) => {
+  Person.findById(request.params.id)
+    .then((person) => {
+      if (person) {
+        response.json(person);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
+});
+
+// POST person
+app.post("/api/persons/", (request, response, next) => {
   const body = request.body;
-  if (!body.name && !body.number) {
-    return response.status(400).json({
-      error: "Content missing",
-    });
+
+  if (body.name === undefined) {
+    console.log("undefined body content => ", body);
+    return response.status(400).json({ error: "content missing" });
   }
-  const nameExists = persons.some((person) => person.name === body.name);
-  if (nameExists) {
-    return response.status(400).json({
-      error: "Name must be unique",
-    });
+
+  const person = new Person({
+    name: body.name,
+    number: body.number,
+  });
+  console.log("person => ", person);
+  person
+    .save()
+    .then((savedPerson) => {
+      if (savedPerson) {
+        response.json(savedPerson);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
+});
+
+// DELETE person
+app.delete("/api/persons/:id", (request, response, next) => {
+  Person.findByIdAndDelete(request.params.id)
+    .then((result) => {
+      response.status(204).end();
+    })
+    .catch((error) => next(error));
+});
+
+// PUT duplicated name
+app.put("/api/persons/:id", (request, response, next) => {
+  const body = request.body;
+
+  if (body.name === undefined) {
+    console.log("undefined body content => ", body);
+    return response.status(400).json({ error: "content missing" });
   }
+
   const person = {
-    id: Math.floor(Math.random() * 1000000),
     name: body.name,
     number: body.number,
   };
+
   console.log("person => ", person);
 
-  persons = persons.concat(person);
-  response.json(persons);
+  Person.findByIdAndUpdate(request.params.id, person, { new: true })
+    .then((updatedNote) => {
+      response.json(updatedNote);
+    })
+    .catch((error) => next(error));
 });
-
-app.delete("/api/persons/:id", (request, response) => {
-  const id = Number(request.params.id);
-  persons = persons.filter((person) => person.id !== id);
-  response.status(204).end();
-});
-
-const PORT = 3001;
 
 app.listen(PORT);
 console.log("Running on PORT => ", PORT);
